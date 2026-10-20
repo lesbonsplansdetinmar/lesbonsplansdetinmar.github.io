@@ -39,6 +39,7 @@
   --c-resto: #F8D030;
   --c-street: #F86848;
   --c-sucre: #58D8F8;
+  --c-andou: #F0A078;
   --ok: #78E878;
   --ko: #F87878;
   --f-pixel: "Press Start 2P", "Courier New", monospace;
@@ -156,6 +157,18 @@ svg#map.dragging { cursor: grabbing; }
 .star:active svg { transform: translate(1px, 1px); }
 .star:focus-visible { outline: 2px solid var(--gold); outline-offset: -4px; }
 .ln .avg { white-space: nowrap; }
+
+/* ---- Andouillette pétroleuse ---- */
+.px-saus { width: 1.5em; height: 1em; display: inline-block; vertical-align: -0.15em; shape-rendering: crispEdges; }
+.opt.andou-f[aria-pressed="true"] { color: var(--c-andou); }
+.andou { display: grid; gap: 6px; padding: 10px 12px; border: 2px dashed var(--border); border-radius: 4px; }
+.andou.yes { border: 2px solid var(--c-andou); }
+.andou .ah { font-family: var(--f-pixel); font-size: 9px; line-height: 1.6; color: var(--c-andou); display: flex; gap: 8px; align-items: center; }
+.andou .ap { font-size: 14px; color: var(--dim); margin: 0; }
+.andou .act.btn { padding-left: 22px; color: var(--text); }
+.andou .act.btn[disabled] { color: var(--ok); cursor: default; }
+.andou .act.btn[disabled]::before { display: none; }
+.tag.t-andou { border-color: var(--c-andou); color: var(--c-andou); }
 
 /* ---- Proposer ---- */
 .title .add { justify-self: start; margin-top: 2px; padding: 6px 4px 4px 18px; font-size: 8px; color: var(--text); }
@@ -281,7 +294,10 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     const mk = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     try { let d = localStorage.getItem('bp-device'); if (!d) { d = mk(); localStorage.setItem('bp-device', d); } return d; } catch (_) { return mk(); }
   })();
-  let R = {}, MY = {}, MY_LOADED = false;
+  let R = {}, MY = {}, MY_LOADED = false, AP = {};
+  const SAUS = '<svg class="px-saus" viewBox="0 0 12 7" aria-hidden="true"><path fill="#05082A" d="M2 1h8v1h1v1h1v2h-1v1h-1v1H2V6H1V5H0V3h1V2h1z"/><path fill="#F0A078" d="M2 2h8v1h1v2h-1v1H2V5H1V3h1z"/><path fill="#C8704A" d="M3 5h7v1H3z"/><path fill="#FCD8B8" d="M3 3h4v1H3z"/><path fill="#F2F4FF" d="M0 1h1v1H0zM11 5h1v1h-1z"/></svg>';
+  const mySig = (() => { try { return JSON.parse(localStorage.getItem('bp-andou') || '{}'); } catch (_) { return {}; } })();
+  const saveSig = () => { try { localStorage.setItem('bp-andou', JSON.stringify(mySig)); } catch (_) {} };
   const STAR = (() => {
     const g = ['....#....', '...###...', '...###...', '#########', '.#######.', '..#####..', '..##.##..', '.##...##.', '.#.....#.'];
     let d = ''; g.forEach((row, y) => [...row].forEach((c, x) => { if (c === '#') d += 'M' + x + ' ' + y + 'h1v1h-1z'; }));
@@ -507,7 +523,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   $('q').addEventListener('focus', () => { if (isPhone() && sheet === 'peek') setSheet('half'); });
 
   // ---------- Filtres ----------
-  let fam = 'all', openOnly = false, query = '', view = 'list';
+  let fam = 'all', openOnly = false, andouOnly = false, query = '', view = 'list';
   const menu = $('menu'), famBtns = {};
   const addOpt = (id, html, cls) => { const b = el('button', { class: 'opt ' + (cls || ''), type: 'button', id, 'aria-pressed': 'false' }); b.innerHTML = html; menu.appendChild(b); return b; };
   [['all', 'TOUT']].concat(Object.entries(FAM)).forEach(([k, v]) => {
@@ -516,9 +532,11 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   });
   const openBtn = addOpt('f-open', 'OUVERT MAINTENANT', 'open-now');
   openBtn.addEventListener('click', () => { openOnly = !openOnly; if (view !== 'list') closeDetail(true); sync(); });
+  const andouBtn = addOpt('f-andou', SAUS + ' ANDOUILLETTE PÉTROLEUSE', 'andou-f');
+  andouBtn.addEventListener('click', () => { andouOnly = !andouOnly; if (view !== 'list') closeDetail(true); sync(); });
   const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   $('q').addEventListener('input', e => { query = norm(e.target.value.trim()); if (view !== 'list') closeDetail(true); sync(); });
-  const match = p => (fam === 'all' || p.fam === fam) && (!openOnly || (status(p, NOW) || {}).open) && (!query || norm([p.nom, p.type, p.prix || '', p.adresse, arrOf(p), p.desc || '', (p.tags || []).join(' ')].join(' ')).includes(query));
+  const match = p => (fam === 'all' || p.fam === fam) && (!openOnly || (status(p, NOW) || {}).open) && (!andouOnly || p.andou) && (!query || norm([p.nom, p.type, p.prix || '', p.adresse, arrOf(p), p.desc || '', (p.tags || []).join(' '), p.andou ? 'andouillette petroleuse' : ''].join(' ')).includes(query));
   const knownCount = places.filter(p => p.week).length;
 
   // ---------- Panneau ----------
@@ -526,6 +544,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   function sync() {
     Object.entries(famBtns).forEach(([k, b]) => b.setAttribute('aria-pressed', k === fam ? 'true' : 'false'));
     openBtn.setAttribute('aria-pressed', openOnly ? 'true' : 'false');
+    andouBtn.setAttribute('aria-pressed', andouOnly ? 'true' : 'false');
     const shown = places.filter(match), set = new Set(shown.map(p => p.id));
     places.forEach(p => pinEls[p.id].classList.toggle('dim', !set.has(p.id)));
     const right = openOnly ? 'SUR ' + knownCount + ' AVEC HORAIRES' : (isPhone() ? '▲ LISTE' : '');
@@ -535,7 +554,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   function renderList(shown) {
     body.innerHTML = '';
     if (!shown.length) {
-      body.innerHTML = '<p class="empty">' + (openOnly ? 'Aucun lieu n\'est ouvert en ce moment parmi les ' + knownCount + ' dont on connaît les horaires.' : 'Aucune adresse ne correspond. Essaie un autre mot ou le filtre TOUT.') + '</p>';
+      body.innerHTML = '<p class="empty">' + (andouOnly ? 'Pas encore d\'adresse validée pour l\'andouillette pétroleuse. Tu en connais une ? Ouvre sa fiche et signale-la, ou propose le lieu : on valide le lundi.' : openOnly ? 'Aucun lieu n\'est ouvert en ce moment parmi les ' + knownCount + ' dont on connaît les horaires.' : 'Aucune adresse ne correspond. Essaie un autre mot ou le filtre TOUT.') + '</p>';
       return;
     }
     const fr = document.createDocumentFragment();
@@ -543,7 +562,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       const s = status(p, NOW);
       const b = el('button', { class: 'item', type: 'button', 'data-id': p.id });
       b.innerHTML = '<span class="cur"></span><span class="sw" style="background:var(--c-' + p.fam + ')"></span><span class="nm">' + esc(p.nom) + '</span>' +
-        '<span class="ln">' + esc(p.type) + ' · ' + esc(where(p)) + (s ? ' · <span class="' + (s.open ? 'st-ok' : 'st-ko') + '">' + (s.open ? 'Ouvert' : 'Fermé') + '</span>' : '') + (R[p.id] ? ' · <span class="avg">' + STAR + ' ' + fnum(R[p.id].avg) + '</span>' : '') + '</span>';
+        '<span class="ln">' + esc(p.type) + ' · ' + esc(where(p)) + (s ? ' · <span class="' + (s.open ? 'st-ok' : 'st-ko') + '">' + (s.open ? 'Ouvert' : 'Fermé') + '</span>' : '') + (p.andou ? ' · ' + SAUS : '') + (R[p.id] ? ' · <span class="avg">' + STAR + ' ' + fnum(R[p.id].avg) + '</span>' : '') + '</span>';
       b.addEventListener('click', () => openDetail(p.id, false));
       fr.appendChild(b);
     });
@@ -555,7 +574,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     const s = status(p, NOW);
     gP.appendChild(pinEls[id]); gP.appendChild(pinName); gP.appendChild(arrow);
     arrow.style.display = ''; pinName.style.display = ''; pinName.textContent = p.nom.toUpperCase().slice(0, 30);
-    const tags = (p.tags || []).map(t => '<span class="tag">' + esc(t.toUpperCase()) + '</span>').join('');
+    const tags = (p.andou ? '<span class="tag t-andou">ANDOUILLETTE PÉTROLEUSE</span>' : '') + (p.tags || []).map(t => '<span class="tag">' + esc(t.toUpperCase()) + '</span>').join('');
     body.innerHTML = '<div class="detail">' +
       '<button class="opt back" type="button" id="back" aria-pressed="true">RETOUR</button>' +
       '<h2>' + esc(p.nom) + '</h2>' +
@@ -572,6 +591,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       '<div class="rate"><span class="rl" id="rl"></span><div class="stars" role="group" aria-label="Ta note" id="stars">' +
         [1, 2, 3, 4, 5].map(n => '<button class="star" type="button" data-n="' + n + '" aria-label="' + n + ' sur 5" aria-pressed="false">' + STAR + '</button>').join('') +
       '</div></div>' +
+      '<div class="andou' + (p.andou ? ' yes' : '') + '" id="andou"></div>' +
       '<div class="acts"><a class="act" href="' + gmaps(p) + '" target="_blank" rel="noopener">ITINÉRAIRE (GOOGLE MAPS)</a>' + (p.post ? '<a class="act" href="' + post(p) + '" target="_blank" rel="noopener">VOIR LE POST INSTAGRAM</a>' : '') +
       '<button class="act btn" type="button" id="report">SIGNALER (FERMÉ, ERREUR…)</button></div>' +
       '</div>';
@@ -579,7 +599,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     $('back').addEventListener('click', () => closeDetail(false));
     $('report').addEventListener('click', () => openForm(p));
     $('stars').addEventListener('click', e => { const b = e.target.closest('.star'); if (b) rate(p.id, +b.dataset.n); });
-    paintRating(p.id);
+    paintRating(p.id); paintAndou(p);
     if (isPhone()) setSheet('half');
     setTimeout(() => setView(viewFor(p.x, p.y, Math.min(vb[2], W() / 6)), true), isPhone() ? 290 : 0);
     if (!fromMap && !isPhone()) $('back').focus({ preventScroll: true });
@@ -617,6 +637,30 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       R = next;
       if (view === 'list') sync(); else if (selP) paintRating(selP.id);
     } catch (e) { /* hors ligne : la carte marche sans les notes */ }
+  }
+  function paintAndou(p) {
+    const box = $('andou'); if (!box) return;
+    const pend = AP[p.id] || { oui: 0, non: 0 }, mine = mySig[p.id];
+    const want = !p.andou;  // ce qu'un signalement proposerait
+    const n = want ? pend.oui : pend.non;
+    box.innerHTML = '<div class="ah">' + SAUS + (p.andou ? 'SERT L\'ANDOUILLETTE PÉTROLEUSE' : 'ANDOUILLETTE PÉTROLEUSE ?') + '</div>' +
+      (n ? '<p class="ap">' + n + ' signalement' + (n > 1 ? 's' : '') + (want ? ' : « elle en sert »' : ' : « elle n\'en sert plus »') + ' · validation le lundi</p>' : '') +
+      (mine === want
+        ? '<button class="act btn" type="button" disabled>SIGNALÉ, MERCI ! VALIDATION LUNDI</button>'
+        : '<button class="act btn" type="button" id="andouGo">' + (want ? 'ICI, ILS EN SERVENT !' : 'ILS N\'EN SERVENT PLUS') + '</button>');
+    const go = $('andouGo');
+    if (go) go.addEventListener('click', async () => {
+      go.disabled = true; go.textContent = 'ENVOI…';
+      try {
+        await rpc('submit', { p_kind: 'andouillette', p_place: p.id, p_nom: p.nom, p_adresse: p.adresse, p_concept: '', p_message: '', p_device: DEV, p_andouillette: want });
+        mySig[p.id] = want; saveSig();
+        AP[p.id] = { ...pend, [want ? 'oui' : 'non']: n + 1 };
+      } catch (err) { go.disabled = false; go.textContent = /limit/.test(err.message) ? 'TROP D\'ENVOIS AUJOURD\'HUI' : 'PAS DE CONNEXION, RÉESSAIE'; return; }
+      paintAndou(p);
+    });
+  }
+  async function loadAndou() {
+    try { const rows = await rpc('andouillette_pending'); const next = {}; rows.forEach(r => next[r.place_id] = { oui: +r.oui, non: +r.non }); AP = next; if (selP) paintAndou(selP); } catch (_) {}
   }
   function paintRating(id) {
     const a = $('ravg'), stars = $('stars'), rl = $('rl'); if (!a || !stars) return;
@@ -660,12 +704,14 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
         '<div class="fld"><label for="fadr">ADRESSE</label><input class="inp" id="fadr" maxlength="200" autocomplete="off" placeholder="Ex. : 30 rue des Cinq-Diamants, Paris 13e"><ul class="win sug" id="fsug"></ul></div>' +
         '<div class="fld"><span class="lab">CONCEPT</span><div class="chips" id="fcon">' +
           Object.entries(FAM).map(([k, v]) => chip('c', k, '<span class="sw" style="background:var(--c-' + k + ')"></span>' + v, false)).join('') + '</div></div>' +
+        '<div class="fld"><span class="lab">SPÉCIALITÉ</span><div class="chips" id="fandou">' + chip('a', '1', SAUS + ' SERT L\'ANDOUILLETTE PÉTROLEUSE', false) + '</div></div>' +
         '<div class="fld"><label for="fmsg">QU\'EST-CE QUI EST BON ?</label><textarea class="inp" id="fmsg" maxlength="600" placeholder="Spécialité, plat à prendre, prix…"></textarea></div>';
     mmsg.textContent = ''; mmsg.className = 'msg'; mgo.disabled = false; mgo.textContent = 'ENVOYER'; $('mhint').textContent = 'Tinmar vérifie chaque lundi.';
     mbg.classList.add('on');
     mbody.querySelectorAll('.chips').forEach(g => g.addEventListener('click', e => {
       const b = e.target.closest('.opt'); if (!b) return;
       g.querySelectorAll('.opt').forEach(o => o.setAttribute('aria-pressed', o === b ? 'true' : 'false'));
+      if (b.dataset.a) { form.andou = !form.andou; b.setAttribute('aria-pressed', form.andou ? 'true' : 'false'); return; }
       if (b.dataset.k) form.kind = b.dataset.k; if (b.dataset.c) form.concept = b.dataset.c;
     }));
     if (!p) addrSuggest();
@@ -703,7 +749,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     } else if (form.kind === 'correction' && !msg) { mmsg.textContent = 'Dis-moi ce qui est faux.'; $('fmsg').focus(); return; }
     mgo.disabled = true; mgo.textContent = 'ENVOI…'; mmsg.textContent = '';
     try {
-      await rpc('submit', { p_kind: form.kind, p_place: p ? p.id : '', p_nom: p ? p.nom : v('fnom'), p_adresse: p ? p.adresse : v('fadr'), p_concept: p ? '' : (form.concept || ''), p_message: msg, p_device: DEV });
+      await rpc('submit', { p_kind: form.kind, p_place: p ? p.id : '', p_nom: p ? p.nom : v('fnom'), p_adresse: p ? p.adresse : v('fadr'), p_concept: p ? '' : (form.concept || ''), p_message: msg, p_device: DEV, p_andouillette: p ? null : !!form.andou });
       mbody.innerHTML = '<p class="lead" style="color:var(--text)">C\'est noté, merci ! Tinmar vérifie l\'adresse et ses horaires, puis met la carte à jour le lundi.</p>';
       mmsg.textContent = ''; $('mhint').textContent = ''; mgo.disabled = false; mgo.textContent = 'OK';
       form = { done: true };
@@ -727,7 +773,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     apply(); draw(true);
   }).observe(app);
   setInterval(() => { NOW = parisNow(); if (view === 'list') sync(); }, 60000);
-  loadRatings();
+  loadRatings(); loadAndou();
   setInterval(() => { if (!document.hidden) loadRatings(); }, 120000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadRatings(); });
 })();
