@@ -49,6 +49,7 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { background: var(--night); color: var(--text); font-family: var(--f-text); font-size: 15px; line-height: 1.55; overflow: hidden; -webkit-font-smoothing: none; }
 button, input { font: inherit; color: inherit; }
 
@@ -618,6 +619,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     if (openOnly) { const n = el('p', { class: 'empty' }); n.textContent = 'Les ' + (places.length - knownCount) + ' autres lieux n\'ont pas d\'horaires connus : ils sont masqués avec ce filtre.'; body.appendChild(n); }
   }
   function openDetail(id, fromMap) {
+    resetPageZoom();
     const p = byId[id]; selP = p; view = 'detail';
     const s = status(p, NOW);
     gP.appendChild(pinEls[id]); gP.appendChild(pinName); gP.appendChild(arrow);
@@ -673,6 +675,17 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       items[Math.max(0, Math.min(items.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))].focus();
     }
   });
+
+  // ---------- Pas de zoom de la page (iPhone) : seule la carte zoome ----------
+  ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1 && !e.target.closest('#map')) e.preventDefault(); }, { passive: false });
+  function resetPageZoom() {
+    const vv = window.visualViewport; if (!vv || vv.scale <= 1.01) return;
+    const m = document.querySelector('meta[name=viewport]'); if (!m) return;
+    const orig = m.getAttribute('content');
+    m.setAttribute('content', orig.replace(/,?\s*maximum-scale=[^,]*/, '') + ', maximum-scale=1');
+    setTimeout(() => m.setAttribute('content', orig), 400);
+  }
 
   // ---------- Base partagée (notes + propositions) ----------
   async function rpc(fn, args) {
