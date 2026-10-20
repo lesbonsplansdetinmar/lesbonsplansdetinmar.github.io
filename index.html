@@ -108,7 +108,20 @@ svg#map.dragging { cursor: grabbing; }
 .search { width: 100%; background: var(--edge-dark); border: 2px solid var(--border); border-radius: 4px; padding: 8px 10px; font-family: var(--f-text); font-size: 16px; color: var(--text); }
 .search::placeholder { color: var(--dim); }
 .search:focus { outline: none; border-color: var(--gold); }
-.menu { display: flex; flex-wrap: wrap; gap: 2px 6px; }
+.menu { display: grid; gap: 8px; }
+.frow { display: flex; gap: 6px; }
+.frow.cats { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; margin: 0 -14px; padding: 2px 14px 4px; touch-action: pan-x; scroll-padding: 0 14px; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 22px), transparent); }
+.frow.cats::-webkit-scrollbar { display: none; }
+.chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; background: var(--edge-dark); border: 2px solid var(--border); border-radius: 4px; cursor: pointer; font-family: var(--f-pixel); font-size: 8px; line-height: 1.4; color: var(--dim); text-shadow: none; white-space: nowrap; }
+.chip .sw { width: 8px; height: 8px; border: 1px solid var(--edge-dark); flex: none; }
+.chip[aria-pressed="true"] { color: var(--edge-dark); background: var(--gold); border-color: var(--edge); }
+.chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.chip:active { transform: translate(1px, 1px); }
+.frow.toggles .chip { flex: 1 1 0; min-width: 0; white-space: normal; text-align: left; }
+.chip .box { width: 12px; height: 12px; flex: none; border: 2px solid currentColor; display: grid; place-items: center; }
+.chip[aria-pressed="true"] .box::after { content: ""; width: 4px; height: 4px; background: currentColor; }
+.chip.open-now[aria-pressed="true"] { background: var(--ok); }
+.chip.andou-f[aria-pressed="true"] { background: var(--c-andou); }
 .opt { background: none; border: 0; padding: 6px 4px 6px 18px; position: relative; cursor: pointer; font-family: var(--f-pixel); font-size: 9px; color: var(--dim); line-height: 1.3; text-shadow: 2px 2px 0 var(--edge-dark); }
 .opt .sw { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border: 1px solid var(--edge-dark); vertical-align: 0; }
 .opt[aria-pressed="true"] { color: var(--text); }
@@ -208,6 +221,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
 
 /* Ordinateur : panneau à droite */
 @media (min-width: 761px) {
+  .frow.cats { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; -webkit-mask-image: none; mask-image: none; }
   .panel { right: max(12px, env(safe-area-inset-right, 0px)); top: calc(env(safe-area-inset-top, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: 380px; }
   .tools { right: calc(max(12px, env(safe-area-inset-right, 0px)) + 396px); }
 }
@@ -250,7 +264,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       <button class="grab" id="grab" type="button" aria-label="Agrandir ou réduire la liste"></button>
       <div class="count" id="count"></div>
       <input class="search" id="q" type="search" placeholder="Nom, plat, « 11e »…" aria-label="Chercher une adresse">
-      <div class="menu" id="menu" role="group" aria-label="Filtres"></div>
+      <div class="menu" id="menu"><div class="frow cats" id="fcats" role="group" aria-label="Catégorie"></div><div class="frow toggles" id="ftog" role="group" aria-label="Filtres"></div></div>
     </div>
     <div class="panel-body" id="pbody"></div>
   </section>
@@ -511,7 +525,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   function setSheet(s) { sheet = s; if (!isPhone()) { panel.style.removeProperty('--off'); return; } panel.style.setProperty('--off', sheetOff(s) + 'px'); }
   (function sheetDrag() {
     const head = $('phead'); let st = null;
-    head.addEventListener('pointerdown', e => { if (!isPhone() || e.target.closest('input, .opt')) return; st = { y: e.clientY, off: sheetOff(sheet), moved: false, id: e.pointerId }; panel.classList.add('dragging'); try { head.setPointerCapture(e.pointerId); } catch (_) {} });
+    head.addEventListener('pointerdown', e => { if (!isPhone() || e.target.closest('input, .opt, .chip')) return; st = { y: e.clientY, off: sheetOff(sheet), moved: false, id: e.pointerId }; panel.classList.add('dragging'); try { head.setPointerCapture(e.pointerId); } catch (_) {} });
     head.addEventListener('pointermove', e => { if (!st) return; const dy = e.clientY - st.y; if (Math.abs(dy) > 5) st.moved = true; panel.style.setProperty('--off', Math.max(0, Math.min(sheetOff('peek'), st.off + dy)) + 'px'); });
     const up = () => {
       if (!st) return; panel.classList.remove('dragging');
@@ -527,14 +541,14 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   // ---------- Filtres ----------
   let fam = 'all', openOnly = false, andouOnly = false, query = '', view = 'list';
   const menu = $('menu'), famBtns = {};
-  const addOpt = (id, html, cls) => { const b = el('button', { class: 'opt ' + (cls || ''), type: 'button', id, 'aria-pressed': 'false' }); b.innerHTML = html; menu.appendChild(b); return b; };
+  const addOpt = (id, html, cls, parent) => { const b = el('button', { class: 'chip ' + (cls || ''), type: 'button', id, 'aria-pressed': 'false' }); b.innerHTML = html; (parent || $('fcats')).appendChild(b); return b; };
   [['all', 'TOUT']].concat(Object.entries(FAM)).forEach(([k, v]) => {
     famBtns[k] = addOpt('f-' + k, (k === 'all' ? '' : '<span class="sw" style="background:var(--c-' + k + ')"></span>') + v);
-    famBtns[k].addEventListener('click', () => { fam = k; if (view !== 'list') closeDetail(true); sync(); });
+    famBtns[k].addEventListener('click', () => { fam = k; famBtns[k].scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' }); if (view !== 'list') closeDetail(true); sync(); });
   });
-  const openBtn = addOpt('f-open', 'OUVERT MAINTENANT', 'open-now');
+  const openBtn = addOpt('f-open', '<span class="box"></span>OUVERT MAINTENANT', 'open-now', $('ftog'));
   openBtn.addEventListener('click', () => { openOnly = !openOnly; if (view !== 'list') closeDetail(true); sync(); });
-  const andouBtn = addOpt('f-andou', SAUS + ' ANDOUILLETTE PÉTROLEUSE', 'andou-f');
+  const andouBtn = addOpt('f-andou', '<span class="box"></span>' + SAUS + '<span>ANDOUILLETTE PÉTROLEUSE</span>', 'andou-f', $('ftog'));
   andouBtn.addEventListener('click', () => { andouOnly = !andouOnly; if (view !== 'list') closeDetail(true); sync(); });
   const norm = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   $('q').addEventListener('input', e => { query = norm(e.target.value.trim()); if (view !== 'list') closeDetail(true); sync(); });
