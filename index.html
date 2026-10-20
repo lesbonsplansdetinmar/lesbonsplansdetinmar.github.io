@@ -185,6 +185,24 @@ svg#map.dragging { cursor: grabbing; }
 .andou .act.btn[disabled]::before { display: none; }
 .tag.t-andou { border-color: var(--c-andou); color: var(--c-andou); }
 
+/* ---- Avis ---- */
+.avis { display: grid; gap: 10px; }
+.avis-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.avis-h .t { font-family: var(--f-pixel); font-size: 9px; color: var(--text); line-height: 1.6; }
+.chip.small { min-height: 32px; padding: 5px 9px; }
+.cm { display: grid; gap: 5px; padding: 10px 12px; background: rgba(5, 8, 42, .5); border-left: 3px solid var(--border); border-radius: 2px; }
+.cm.mine { border-left-color: var(--gold); }
+.cm .plat { font-family: var(--f-pixel); font-size: 8px; line-height: 1.7; color: var(--gold); }
+.cm p { margin: 0; font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.cm .by { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13px; color: var(--dim); }
+.cm .del { background: none; border: 0; padding: 4px 0; cursor: pointer; font-family: var(--f-pixel); font-size: 7px; color: var(--dim); }
+.cm .del.sure { color: var(--ko); }
+.compose { display: grid; gap: 10px; padding: 12px; border: 2px solid var(--border); border-radius: 4px; }
+.compose .row2 { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.cnt { font-size: 13px; color: var(--dim); }
+.compose .go { padding: 10px 14px; font-size: 9px; }
+.px-bub { width: 1.1em; height: 1em; display: inline-block; vertical-align: -0.12em; shape-rendering: crispEdges; fill: var(--dim); }
+
 /* ---- Proposer ---- */
 .title .add { justify-self: start; margin-top: 2px; padding: 6px 4px 4px 18px; font-size: 8px; color: var(--text); }
 .title .add::before, .act.btn::before { content: ""; position: absolute; left: 3px; top: 50%; margin-top: -5px; border: 5px solid transparent; border-left: 8px solid var(--gold); border-right: 0; }
@@ -310,7 +328,10 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     const mk = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
     try { let d = localStorage.getItem('bp-device'); if (!d) { d = mk(); localStorage.setItem('bp-device', d); } return d; } catch (_) { return mk(); }
   })();
-  let R = {}, MY = {}, MY_LOADED = false, AP = {};
+  let R = {}, MY = {}, MY_LOADED = false, AP = {}, CC = {};
+  const BUB = '<svg class="px-bub" viewBox="0 0 10 9" aria-hidden="true"><path d="M1 0h8v1h1v5H9v1H4v1H3v1H2V7H1V6H0V1h1z"/></svg>';
+  const getPseudo = () => { try { return localStorage.getItem('bp-pseudo') || ''; } catch (_) { return ''; } };
+  const setPseudo = v => { try { localStorage.setItem('bp-pseudo', v); } catch (_) {} };
   const SAUS = '<svg class="px-saus" viewBox="0 0 12 7" aria-hidden="true"><path fill="#05082A" d="M2 1h8v1h1v1h1v2h-1v1h-1v1H2V6H1V5H0V3h1V2h1z"/><path fill="#F0A078" d="M2 2h8v1h1v2h-1v1H2V5H1V3h1z"/><path fill="#C8704A" d="M3 5h7v1H3z"/><path fill="#FCD8B8" d="M3 3h4v1H3z"/><path fill="#F2F4FF" d="M0 1h1v1H0zM11 5h1v1h-1z"/></svg>';
   const mySig = (() => { try { return JSON.parse(localStorage.getItem('bp-andou') || '{}'); } catch (_) { return {}; } })();
   const saveSig = () => { try { localStorage.setItem('bp-andou', JSON.stringify(mySig)); } catch (_) {} };
@@ -578,7 +599,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       const s = status(p, NOW);
       const b = el('button', { class: 'item', type: 'button', 'data-id': p.id });
       b.innerHTML = '<span class="cur"></span><span class="sw" style="background:var(--c-' + p.fam + ')"></span><span class="nm">' + esc(p.nom) + '</span>' +
-        '<span class="ln">' + esc(p.type) + ' · ' + esc(where(p)) + (s ? ' · <span class="' + (s.open ? 'st-ok' : 'st-ko') + '">' + (s.open ? 'Ouvert' : 'Fermé') + '</span>' : '') + (p.andou ? ' · ' + SAUS : '') + (R[p.id] ? ' · <span class="avg">' + STAR + ' ' + fnum(R[p.id].avg) + '</span>' : '') + '</span>';
+        '<span class="ln">' + esc(p.type) + ' · ' + esc(where(p)) + (s ? ' · <span class="' + (s.open ? 'st-ok' : 'st-ko') + '">' + (s.open ? 'Ouvert' : 'Fermé') + '</span>' : '') + (p.andou ? ' · ' + SAUS : '') + (CC[p.id] ? ' · ' + BUB + ' ' + CC[p.id] : '') + (R[p.id] ? ' · <span class="avg">' + STAR + ' ' + fnum(R[p.id].avg) + '</span>' : '') + '</span>';
       b.addEventListener('click', () => openDetail(p.id, false));
       fr.appendChild(b);
     });
@@ -607,6 +628,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       '<div class="rate"><span class="rl" id="rl"></span><div class="stars" role="group" aria-label="Ta note" id="stars">' +
         [1, 2, 3, 4, 5].map(n => '<button class="star" type="button" data-n="' + n + '" aria-label="' + n + ' sur 5" aria-pressed="false">' + STAR + '</button>').join('') +
       '</div><button class="act btn unrate" type="button" id="unrate" hidden>RETIRER MA NOTE</button></div>' +
+      '<section class="avis" id="avis" aria-label="Avis"></section>' +
       '<div class="andou' + (p.andou ? ' yes' : '') + '" id="andou"></div>' +
       '<div class="acts"><a class="act" href="' + gmaps(p) + '" target="_blank" rel="noopener">ITINÉRAIRE (GOOGLE MAPS)</a>' + (p.post ? '<a class="act" href="' + post(p) + '" target="_blank" rel="noopener">VOIR LE POST INSTAGRAM</a>' : '') +
       '<button class="act btn" type="button" id="report">SIGNALER (FERMÉ, ERREUR…)</button></div>' +
@@ -616,14 +638,14 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     $('report').addEventListener('click', () => openForm(p));
     $('stars').addEventListener('click', e => { const b = e.target.closest('.star'); if (b) rate(p.id, +b.dataset.n); });
     $('unrate').addEventListener('click', () => { if (MY[p.id]) rate(p.id, MY[p.id]); });
-    paintRating(p.id); paintAndou(p);
+    paintRating(p.id); paintAndou(p); avis = { p, list: null, open: false, writing: false, err: '' }; paintAvis(); loadComments(p);
     if (isPhone()) setSheet('half');
     setTimeout(() => setView(viewFor(p.x, p.y, Math.min(vb[2], W() / 6)), true), isPhone() ? 290 : 0);
     if (!fromMap && !isPhone()) $('back').focus({ preventScroll: true });
     apply();
   }
   function closeDetail(silent) {
-    const id = selP && selP.id; selP = null; view = 'list';
+    const id = selP && selP.id; selP = null; view = 'list'; avis = null;
     arrow.style.display = 'none'; pinName.style.display = 'none';
     if (silent) { apply(); return; }
     sync(); apply();
@@ -632,6 +654,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   // Clavier, comme dans un menu : flèches, Entrée, Échap
   document.addEventListener('keydown', e => {
     if (form) return;
+    if (e.target.matches && e.target.matches('textarea, #avPlat, #avPseudo')) return;
     if (e.target.matches && e.target.matches('input')) { if (e.key === 'ArrowDown') { const f = body.querySelector('.item'); if (f) { e.preventDefault(); f.focus(); } } return; }
     if (e.key === 'Escape' && view === 'detail') { e.preventDefault(); closeDetail(false); return; }
     if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && e.target.closest && e.target.closest('.item')) {
@@ -675,6 +698,63 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       } catch (err) { go.disabled = false; go.textContent = /limit/.test(err.message) ? 'TROP D\'ENVOIS AUJOURD\'HUI' : 'PAS DE CONNEXION, RÉESSAIE'; return; }
       paintAndou(p);
     });
+  }
+  // ---------- Avis ----------
+  let avis = null;
+  const cdate = iso => fdate(String(iso).slice(0, 10));
+  async function loadComments(p) {
+    try { const rows = await rpc('list_comments', { p_place: p.id, p_device: DEV }); if (avis && avis.p === p) { avis.list = rows; CC[p.id] = rows.length; paintAvis(); } }
+    catch (_) { if (avis && avis.p === p) { avis.list = avis.list || []; avis.err = 'Avis indisponibles (connexion ?).'; paintAvis(); } }
+  }
+  function paintAvis() {
+    const box = $('avis'); if (!box || !avis) return;
+    const { p, list, open, writing } = avis, n = list ? list.length : 0;
+    let h = '<div class="avis-h"><span class="t">' + BUB + ' AVIS' + (n ? ' · ' + n : '') + '</span>' +
+      (writing ? '' : '<button class="chip small" type="button" id="avWrite">+ DONNER MON AVIS</button>') + '</div>';
+    if (writing) h += '<form class="compose" id="avForm" novalidate>' +
+      '<div class="fld"><label for="avPlat">PLAT À RECOMMANDER <span class="note">(facultatif)</span></label><input class="inp" id="avPlat" maxlength="60" autocomplete="off" placeholder="Ex. : l\'aligot"></div>' +
+      '<div class="fld"><label for="avBody">TON AVIS</label><textarea class="inp" id="avBody" maxlength="280" placeholder="Ce que tu as mangé, ce qu\'il faut prendre…"></textarea></div>' +
+      '<div class="fld"><label for="avPseudo">PSEUDO <span class="note">(facultatif)</span></label><input class="inp" id="avPseudo" maxlength="24" autocomplete="nickname" value="' + esc(getPseudo()) + '"></div>' +
+      '<div class="msg" id="avMsg" role="status">' + esc(avis.err || '') + '</div>' +
+      '<div class="row2"><button class="opt" type="button" id="avCancel">ANNULER</button><span class="cnt" id="avCnt">0/280</span><button class="go" type="submit" id="avGo">PUBLIER</button></div></form>';
+    if (!list) h += '<p class="ap note">Chargement…</p>';
+    else if (!n && !writing) h += '<p class="ap note">' + (avis.err ? esc(avis.err) : 'Pas encore d\'avis. Sois le premier à recommander un plat !') + '</p>';
+    else {
+      (open ? list : list.slice(0, 3)).forEach(c => {
+        h += '<article class="cm' + (c.mine ? ' mine' : '') + '">' + (c.plat ? '<div class="plat">' + STAR + ' À PRENDRE : ' + esc(c.plat.toUpperCase()) + '</div>' : '') +
+          '<p>' + esc(c.body) + '</p><div class="by"><span>' + esc(c.pseudo || 'Anonyme') + ' · ' + cdate(c.created_at) + '</span>' +
+          (c.mine ? '<button class="del" type="button" data-del="' + c.id + '">SUPPRIMER</button>' : '') + '</div></article>';
+      });
+      if (n > 3) h += '<button class="act btn" type="button" id="avMore">' + (open ? 'MOINS D\'AVIS' : 'VOIR LES ' + n + ' AVIS') + '</button>';
+    }
+    box.innerHTML = h;
+    const w = $('avWrite'); if (w) w.addEventListener('click', () => { if (isPhone()) setSheet('full'); avis.writing = true; avis.err = ''; paintAvis(); setTimeout(() => { const f = $('avBody'); if (f) { f.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (!isPhone()) f.focus(); } }, 30); });
+    const m = $('avMore'); if (m) m.addEventListener('click', () => { avis.open = !avis.open; paintAvis(); });
+    box.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+      if (!b.classList.contains('sure')) { b.classList.add('sure'); b.textContent = 'SÛR ? TOUCHE ENCORE'; setTimeout(() => { if (b.isConnected) { b.classList.remove('sure'); b.textContent = 'SUPPRIMER'; } }, 3000); return; }
+      b.textContent = '…';
+      try { await rpc('delete_comment', { p_id: +b.dataset.del, p_device: DEV }); avis.list = avis.list.filter(c => c.id !== +b.dataset.del); CC[p.id] = avis.list.length; paintAvis(); } catch (_) { b.textContent = 'ÉCHEC, RÉESSAIE'; }
+    }));
+    const f = $('avForm'); if (!f) return;
+    const body = $('avBody'), cnt = $('avCnt');
+    body.addEventListener('input', () => { cnt.textContent = body.value.length + '/280'; });
+    $('avCancel').addEventListener('click', () => { avis.writing = false; avis.err = ''; paintAvis(); });
+    f.addEventListener('submit', async e => {
+      e.preventDefault();
+      const txt = body.value.trim(), plat = $('avPlat').value.trim(), ps = $('avPseudo').value.trim();
+      if (txt.length < 2) { $('avMsg').textContent = 'Écris quelques mots sur ce que tu as mangé.'; body.focus(); return; }
+      const go = $('avGo'); go.disabled = true; go.textContent = 'ENVOI…'; setPseudo(ps);
+      try {
+        await rpc('add_comment', { p_place: p.id, p_device: DEV, p_pseudo: ps, p_plat: plat, p_body: txt });
+        avis.writing = false; avis.err = ''; await loadComments(p);
+      } catch (err) {
+        go.disabled = false; go.textContent = 'PUBLIER';
+        $('avMsg').textContent = /limit/.test(err.message) ? 'Tu as déjà beaucoup écrit aujourd\'hui : réessaie demain.' : 'Envoi impossible (connexion ?). Réessaie.';
+      }
+    });
+  }
+  async function loadCounts() {
+    try { const rows = await rpc('comment_counts'); const next = {}; rows.forEach(r => next[r.place_id] = +r.n); CC = next; if (view === 'list') sync(); } catch (_) {}
   }
   async function loadAndou() {
     try { const rows = await rpc('andouillette_pending'); const next = {}; rows.forEach(r => next[r.place_id] = { oui: +r.oui, non: +r.non }); AP = next; if (selP) paintAndou(selP); } catch (_) {}
@@ -791,8 +871,8 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     apply(); draw(true);
   }).observe(app);
   setInterval(() => { NOW = parisNow(); if (view === 'list') sync(); }, 60000);
-  loadRatings(); loadAndou();
-  setInterval(() => { if (!document.hidden) loadRatings(); }, 120000);
+  loadRatings(); loadAndou(); loadCounts();
+  setInterval(() => { if (!document.hidden) { loadRatings(); loadCounts(); } }, 120000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) loadRatings(); });
 })();
 </script>
