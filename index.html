@@ -566,13 +566,13 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
         (p.prix ? '<dt>PRIX</dt><dd>' + esc(p.prix) + '</dd>' : '') +
         '<dt>HEURES</dt>' + (p.week ? '<dd>' + esc(today(p)) + '<br><span class="' + (s.open ? 'st-ok' : 'st-ko') + '">' + esc(s.txt) + '</span>' + (p.hsrc === 'google' ? '<br><span class="note">Source : Google Maps</span>' : '') + '</dd>' : p.horaires ? '<dd>' + esc(p.horaires) + '</dd>' : '<dd class="note">Inconnues</dd>') +
         '<dt>LIEU</dt><dd>' + esc(p.adresse) + '</dd>' +
-        '<dt>POST</dt><dd>' + fdate(p.date) + '</dd>' +
+        (p.post ? '<dt>POST</dt>' : '<dt>AJOUT</dt>') + '<dd>' + fdate(p.date) + '</dd>' +
       '</dl>' +
       (tags ? '<div class="tags">' + tags + '</div>' : '') +
       '<div class="rate"><span class="rl" id="rl"></span><div class="stars" role="group" aria-label="Ta note" id="stars">' +
         [1, 2, 3, 4, 5].map(n => '<button class="star" type="button" data-n="' + n + '" aria-label="' + n + ' sur 5" aria-pressed="false">' + STAR + '</button>').join('') +
       '</div></div>' +
-      '<div class="acts"><a class="act" href="' + gmaps(p) + '" target="_blank" rel="noopener">ITINÉRAIRE (GOOGLE MAPS)</a><a class="act" href="' + post(p) + '" target="_blank" rel="noopener">VOIR LE POST INSTAGRAM</a>' +
+      '<div class="acts"><a class="act" href="' + gmaps(p) + '" target="_blank" rel="noopener">ITINÉRAIRE (GOOGLE MAPS)</a>' + (p.post ? '<a class="act" href="' + post(p) + '" target="_blank" rel="noopener">VOIR LE POST INSTAGRAM</a>' : '') +
       '<button class="act btn" type="button" id="report">SIGNALER (FERMÉ, ERREUR…)</button></div>' +
       '</div>';
     body.scrollTop = 0;
