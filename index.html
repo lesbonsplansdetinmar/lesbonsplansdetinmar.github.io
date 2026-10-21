@@ -82,6 +82,7 @@ svg#map.dragging { cursor: grabbing; }
 .pin { cursor: pointer; }
 .pin rect { fill: var(--c); stroke: var(--edge-dark); shape-rendering: crispEdges; }
 .pin rect.halo { fill: var(--gold); stroke: var(--edge-dark); }
+.pin rect.h-andou { fill: #E83838; }
 .pin.f-resto { --c: var(--c-resto); } .pin.f-street { --c: var(--c-street); } .pin.f-sucre { --c: var(--c-sucre); } .pin.f-boutique { --c: var(--c-boutique); }
 .pin.dim { opacity: .18; pointer-events: none; }
 .pin:focus-visible { outline: none; }
@@ -447,8 +448,9 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   const gP = $('pins'), pinEls = {};
   places.forEach(p => {
     const [x, y] = proj(p.lat, p.lng); p.x = x; p.y = y;
-    const g = el('g', { class: 'pin f-' + p.fam + (p.tinmar ? ' tin' : ''), tabindex: '0', role: 'button', 'aria-label': p.nom + (p.tinmar ? ' (classique de Tinmar)' : '') }, 1);
-    if (p.tinmar) g.appendChild(el('rect', { class: 'halo' }, 1));
+    const g = el('g', { class: 'pin f-' + p.fam + (p.tinmar ? ' tin' : ''), tabindex: '0', role: 'button', 'aria-label': p.nom + (p.tinmar ? ' (classique de Tinmar)' : '') + (p.andou ? ' (andouillette pétroleuse)' : '') }, 1);
+    if (p.andou) g.appendChild(el('rect', { class: 'halo h-andou' }, 1));
+    if (p.tinmar) g.appendChild(el('rect', { class: 'halo h-tin' }, 1));
     g.appendChild(el('rect', {}, 1));
     g.addEventListener('click', () => { if (moved) return; openDetail(p.id, true); });
     g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(p.id, true); } });
@@ -496,7 +498,8 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
       const p = byId[id], s = (selP && selP.id === id ? base + 5 : base) * u, r = pinEls[id].lastChild;
       r.setAttribute('x', (p.x - s / 2).toFixed(2)); r.setAttribute('y', (p.y - s / 2).toFixed(2));
       r.setAttribute('width', s.toFixed(2)); r.setAttribute('height', s.toFixed(2)); r.setAttribute('stroke-width', (2.5 * u).toFixed(3));
-      if (p.tinmar) { const h = pinEls[id].firstChild, hs = s + 7 * u; h.setAttribute('x', (p.x - hs / 2).toFixed(2)); h.setAttribute('y', (p.y - hs / 2).toFixed(2)); h.setAttribute('width', hs.toFixed(2)); h.setAttribute('height', hs.toFixed(2)); h.setAttribute('stroke-width', (2.5 * u).toFixed(3)); }
+      const halos = pinEls[id].querySelectorAll('.halo');
+      halos.forEach((h, i) => { const hs = s + (7 + 7 * (halos.length - 1 - i)) * u; h.setAttribute('x', (p.x - hs / 2).toFixed(2)); h.setAttribute('y', (p.y - hs / 2).toFixed(2)); h.setAttribute('width', hs.toFixed(2)); h.setAttribute('height', hs.toFixed(2)); h.setAttribute('stroke-width', (2.5 * u).toFixed(3)); });
     }
     if (selP) {
       const s = (base + 5) * u, ax = selP.x, ay = selP.y - s / 2 - 5 * u;
