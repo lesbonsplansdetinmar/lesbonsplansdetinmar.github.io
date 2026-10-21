@@ -111,15 +111,17 @@ svg#map.dragging { cursor: grabbing; }
 .search::placeholder { color: var(--dim); }
 .search:focus { outline: none; border-color: var(--gold); }
 .menu { display: grid; gap: 8px; }
-.frow { display: flex; gap: 6px; }
-.frow.cats { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; margin: 0 -14px; padding: 2px 14px 4px; touch-action: pan-x; scroll-padding: 0 14px; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 22px), transparent); }
-.frow.cats::-webkit-scrollbar { display: none; }
+.menu .frow { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.menu .frow .chip { grid-column: span 2; }
+#f-boutique { grid-column: span 4; }
+.menu .frow.toggles .chip { grid-column: span 3; }
+.menu .frow.toggles #f-tin { grid-column: span 6; }
 .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 10px; background: var(--edge-dark); border: 2px solid var(--border); border-radius: 4px; cursor: pointer; font-family: var(--f-pixel); font-size: 8px; line-height: 1.4; color: var(--dim); text-shadow: none; white-space: nowrap; }
+.menu .chip { min-width: 0; min-height: 40px; white-space: normal; text-align: left; line-height: 1.5; padding: 6px 8px; }
 .chip .sw { width: 8px; height: 8px; border: 1px solid var(--edge-dark); flex: none; }
 .chip[aria-pressed="true"] { color: var(--edge-dark); background: var(--gold); border-color: var(--edge); }
 .chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .chip:active { transform: translate(1px, 1px); }
-.frow.toggles .chip { flex: 1 1 0; min-width: 0; white-space: normal; text-align: left; }
 .chip .box { width: 12px; height: 12px; flex: none; border: 2px solid currentColor; display: grid; place-items: center; }
 .chip[aria-pressed="true"] .box::after { content: ""; width: 4px; height: 4px; background: currentColor; }
 .chip.open-now[aria-pressed="true"] { background: var(--ok); }
@@ -191,8 +193,6 @@ svg#map.dragging { cursor: grabbing; }
 .tag.t-tin { border-color: var(--gold); color: var(--gold); }
 .detail p.tnote { color: var(--gold); }
 .chip.tin-f[aria-pressed="true"] { background: var(--gold); }
-.frow.toggles { flex-wrap: wrap; }
-.frow.toggles .chip.tin-f { flex-basis: 100%; }
 .ap.ok-t { color: var(--ok); }
 .tag.t-andou { border-color: var(--c-andou); color: var(--c-andou); }
 
@@ -250,7 +250,6 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
 
 /* Ordinateur : panneau à droite */
 @media (min-width: 761px) {
-  .frow.cats { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; -webkit-mask-image: none; mask-image: none; }
   .panel { right: max(12px, env(safe-area-inset-right, 0px)); top: calc(env(safe-area-inset-top, 0px) + 12px); bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: 380px; }
   .tools { right: calc(max(12px, env(safe-area-inset-right, 0px)) + 396px); }
 }
@@ -586,7 +585,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   const addOpt = (id, html, cls, parent) => { const b = el('button', { class: 'chip ' + (cls || ''), type: 'button', id, 'aria-pressed': 'false' }); b.innerHTML = html; (parent || $('fcats')).appendChild(b); return b; };
   [['all', 'TOUT']].concat(Object.entries(FAM)).forEach(([k, v]) => {
     famBtns[k] = addOpt('f-' + k, (k === 'all' ? '' : '<span class="sw" style="background:var(--c-' + k + ')"></span>') + v);
-    famBtns[k].addEventListener('click', () => { pickCat(k); famBtns[k].scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' }); if (view !== 'list') closeDetail(true); sync(); });
+    famBtns[k].addEventListener('click', () => { pickCat(k); if (view !== 'list') closeDetail(true); sync(); });
   });
   const openBtn = addOpt('f-open', '<span class="box"></span>OUVERT MAINTENANT', 'open-now', $('ftog'));
   openBtn.addEventListener('click', () => { openOnly = !openOnly; if (view !== 'list') closeDetail(true); sync(); });
