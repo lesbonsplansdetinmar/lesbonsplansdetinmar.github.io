@@ -557,17 +557,30 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
 
   // ---------- Tiroir (téléphone) ----------
   let sheet = 'peek';
-  const sheetOff = s => { const h = panel.offsetHeight, peek = $('phead').offsetHeight + 4; return s === 'full' ? 0 : s === 'half' ? Math.max(0, h - Hh() * 0.52) : Math.max(0, h - peek); };
-  function setSheet(s) { sheet = s; if (!isPhone()) { panel.style.removeProperty('--off'); return; } panel.style.setProperty('--off', sheetOff(s) + 'px'); }
+  // États du tiroir, du plus ouvert au plus replié : liste plein écran, moitié, menu des filtres, petite barre
+  const SHEETS = ['full', 'half', 'peek', 'mini'];
+  const sheetOff = s => {
+    const h = panel.offsetHeight, peek = $('phead').offsetHeight + 4, c = $('count'), mini = c.offsetTop + c.offsetHeight + 12;
+    return s === 'full' ? 0 : s === 'half' ? Math.max(0, h - Hh() * 0.52) : s === 'mini' ? Math.max(0, h - mini) : Math.max(0, h - peek);
+  };
+  function setSheet(s) {
+    sheet = s; panel.classList.toggle('is-mini', s === 'mini' && isPhone());
+    if (!isPhone()) { panel.style.removeProperty('--off'); return; }
+    panel.style.setProperty('--off', sheetOff(s) + 'px');
+    const r = document.querySelector('#count .cright'); if (r && !openOnly) r.textContent = s === 'mini' ? '▲ FILTRES' : '▲ LISTE';
+  }
   (function sheetDrag() {
     const head = $('phead'); let st = null;
     head.addEventListener('pointerdown', e => { if (!isPhone() || e.target.closest('input, .opt, .chip')) return; st = { y: e.clientY, off: sheetOff(sheet), moved: false, id: e.pointerId }; panel.classList.add('dragging'); try { head.setPointerCapture(e.pointerId); } catch (_) {} });
-    head.addEventListener('pointermove', e => { if (!st) return; const dy = e.clientY - st.y; if (Math.abs(dy) > 5) st.moved = true; panel.style.setProperty('--off', Math.max(0, Math.min(sheetOff('peek'), st.off + dy)) + 'px'); });
+    head.addEventListener('pointermove', e => { if (!st) return; const dy = e.clientY - st.y; if (Math.abs(dy) > 5) st.moved = true; panel.style.setProperty('--off', Math.max(0, Math.min(sheetOff('mini'), st.off + dy)) + 'px'); });
     const up = () => {
       if (!st) return; panel.classList.remove('dragging');
       const cur = parseFloat(panel.style.getPropertyValue('--off')) || 0;
-      if (!st.moved) setSheet(sheet === 'peek' ? 'half' : sheet === 'half' ? 'full' : 'peek');
-      else setSheet(['full', 'half', 'peek'].map(s => [s, Math.abs(sheetOff(s) - cur)]).sort((a, b) => a[1] - b[1])[0][0]);
+      const dy = cur - st.off, i = SHEETS.indexOf(sheet);
+      if (!st.moved) setSheet(sheet === 'mini' ? 'peek' : sheet === 'peek' ? 'half' : sheet === 'half' ? 'full' : 'peek');
+      else if (dy > 40) setSheet(SHEETS.filter(x => sheetOff(x) > st.off + 20).sort((a, b) => Math.abs(sheetOff(a) - cur) - Math.abs(sheetOff(b) - cur))[0] || 'mini');
+      else if (dy < -40) setSheet(SHEETS.filter(x => sheetOff(x) < st.off - 20).sort((a, b) => Math.abs(sheetOff(a) - cur) - Math.abs(sheetOff(b) - cur))[0] || 'full');
+      else setSheet(SHEETS[i]);
       st = null;
     };
     head.addEventListener('pointerup', up); head.addEventListener('pointercancel', up);
@@ -610,8 +623,8 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     andouBtn.setAttribute('aria-pressed', andouOnly ? 'true' : 'false'); andouBtn.disabled = andouBlocked(); andouBtn.title = andouBlocked() ? 'Pas d\'andouillette sur le pouce ni en sucré' : '';
     const shown = places.filter(match), set = new Set(shown.map(p => p.id));
     places.forEach(p => pinEls[p.id].classList.toggle('dim', !set.has(p.id)));
-    const right = openOnly ? 'SUR ' + knownCount + ' AVEC HORAIRES' : (isPhone() ? '▲ LISTE' : '');
-    $('count').innerHTML = '<span><b>' + shown.length + '</b> LIEU' + (shown.length > 1 ? 'X' : '') + '</span><span>' + right + '</span>';
+    const right = openOnly ? 'SUR ' + knownCount + ' AVEC HORAIRES' : (isPhone() ? (sheet === 'mini' ? '▲ FILTRES' : '▲ LISTE') : '');
+    $('count').innerHTML = '<span><b>' + shown.length + '</b> LIEU' + (shown.length > 1 ? 'X' : '') + '</span><span class="cright">' + right + '</span>';
     if (view === 'list') renderList(shown);
   }
   function renderList(shown) {
