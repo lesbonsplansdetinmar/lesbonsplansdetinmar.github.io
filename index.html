@@ -549,6 +549,11 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     if (!ptrs.size) { svg.classList.remove('dragging'); setTimeout(() => { moved = false; }, 0); }
   };
   svg.addEventListener('pointerup', endPtr); svg.addEventListener('pointercancel', endPtr);
+  // Toucher un endroit vide de la carte désélectionne l'adresse ouverte
+  svg.addEventListener('click', e => {
+    if (moved || e.target.closest('.pin') || view !== 'detail') return;
+    closeDetail(false); if (isPhone()) setSheet('peek');
+  });
   svg.addEventListener('dblclick', e => { const [mx, my] = toMap(e.clientX, e.clientY); zoomAround(0.5, mx, my, true); });
   const centerMap = () => { const [l, t, r, b] = visRect(); return toMap((l + r) / 2, (t + b) / 2); };
   $('zin').addEventListener('click', () => { const [cx, cy] = centerMap(); zoomAround(0.5, cx, cy, true); });
