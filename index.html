@@ -108,6 +108,7 @@ svg#map.dragging { cursor: grabbing; }
 .grab { display: none; }
 .count { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-family: var(--f-pixel); font-size: 9px; color: var(--dim); }
 .count b { color: var(--text); font-weight: 400; }
+.count .cright { padding: 6px 0 6px 12px; margin: -6px 0; cursor: pointer; }
 .search { width: 100%; background: var(--edge-dark); border: 2px solid var(--border); border-radius: 4px; padding: 8px 10px; font-family: var(--f-text); font-size: 16px; color: var(--text); }
 .search::placeholder { color: var(--dim); }
 .search:focus { outline: none; border-color: var(--gold); }
@@ -581,20 +582,33 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     const r = document.querySelector('#count .cright'); if (r && !openOnly) r.textContent = s === 'mini' ? '▲ FILTRES' : '▲ LISTE';
   }
   (function sheetDrag() {
+    // Tiroir : glisser au doigt (événements tactiles, plus fiables sur iPhone) ou à la souris ; toucher la barre replie/déplie
     const head = $('phead'); let st = null;
-    head.addEventListener('pointerdown', e => { if (!isPhone() || e.target.closest('input, .opt, .chip')) return; st = { y: e.clientY, off: sheetOff(sheet), moved: false, id: e.pointerId }; panel.classList.add('dragging'); try { head.setPointerCapture(e.pointerId); } catch (_) {} });
-    head.addEventListener('pointermove', e => { if (!st) return; const dy = e.clientY - st.y; if (Math.abs(dy) > 5) st.moved = true; panel.style.setProperty('--off', Math.max(0, Math.min(sheetOff('mini'), st.off + dy)) + 'px'); });
-    const up = () => {
+    const start = (y, target) => {
+      if (!isPhone() || target.closest('input, .opt, .chip')) return false;
+      st = { y, off: sheetOff(sheet), moved: false, up: !!target.closest('.cright') }; panel.classList.add('dragging'); return true;
+    };
+    const move = y => { if (!st) return; const dy = y - st.y; if (Math.abs(dy) > 6) st.moved = true; if (st.moved) panel.style.setProperty('--off', Math.max(0, Math.min(sheetOff('mini'), st.off + dy)) + 'px'); };
+    const end = cancelled => {
       if (!st) return; panel.classList.remove('dragging');
-      const cur = parseFloat(panel.style.getPropertyValue('--off')) || 0;
-      const dy = cur - st.off, i = SHEETS.indexOf(sheet);
-      if (!st.moved) setSheet(sheet === 'mini' ? 'peek' : sheet === 'peek' ? 'half' : sheet === 'half' ? 'full' : 'peek');
+      const cur = parseFloat(panel.style.getPropertyValue('--off')) || st.off, dy = cur - st.off;
+      if (!st.moved) {
+        if (cancelled) setSheet(sheet);
+        else if (st.up) setSheet(sheet === 'mini' ? 'peek' : sheet === 'peek' ? 'half' : 'full');        // « ▲ LISTE / ▲ FILTRES » : on monte d'un cran
+        else setSheet(sheet === 'peek' ? 'mini' : sheet === 'mini' ? 'peek' : sheet === 'full' ? 'half' : 'peek'); // barre : replier / déplier
+      }
       else if (dy > 40) setSheet(SHEETS.filter(x => sheetOff(x) > st.off + 20).sort((a, b) => Math.abs(sheetOff(a) - cur) - Math.abs(sheetOff(b) - cur))[0] || 'mini');
       else if (dy < -40) setSheet(SHEETS.filter(x => sheetOff(x) < st.off - 20).sort((a, b) => Math.abs(sheetOff(a) - cur) - Math.abs(sheetOff(b) - cur))[0] || 'full');
-      else setSheet(SHEETS[i]);
+      else setSheet(sheet);
       st = null;
     };
-    head.addEventListener('pointerup', up); head.addEventListener('pointercancel', up);
+    head.addEventListener('touchstart', e => { if (e.touches.length === 1) start(e.touches[0].clientY, e.target); else if (st) end(true); }, { passive: true });
+    head.addEventListener('touchmove', e => { if (!st) return; e.preventDefault(); move(e.touches[0].clientY); }, { passive: false });
+    head.addEventListener('touchend', e => { if (st) { e.preventDefault(); end(false); } }, { passive: false });
+    head.addEventListener('touchcancel', () => end(true));
+    head.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; if (start(e.clientY, e.target)) try { head.setPointerCapture(e.pointerId); } catch (_) {} });
+    head.addEventListener('pointermove', e => { if (e.pointerType === 'mouse') move(e.clientY); });
+    head.addEventListener('pointerup', e => { if (e.pointerType === 'mouse') end(false); });
   })();
   $('q').addEventListener('focus', () => { if (isPhone() && sheet === 'peek') setSheet('half'); });
 
