@@ -525,7 +525,8 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   svg.addEventListener('pointerdown', e => {
     if (e.isPrimary) { ptrs.clear(); pinch = null; }   // premier doigt d'un nouveau geste : on repart de zéro
     ptrs.set(e.pointerId, [e.clientX, e.clientY]); cancelAnimationFrame(anim);
-    if (ptrs.size === 1) { moved = false; start = { x: e.clientX, y: e.clientY, vb: vb.slice() }; }
+    if (ptrs.size === 1) { moved = false; start = { x: e.clientX, y: e.clientY, vb: vb.slice(), t: Date.now(), tap: !e.target.closest('.pin') }; }
+    else if (start) start.tap = false;
     if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), vb: vb.slice(), c: toMap((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) }; }
   });
   svg.addEventListener('pointermove', e => {
@@ -547,6 +548,7 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
     }
   });
   const endPtr = e => {
+    if (e.type === 'pointerup' && ptrs.size === 1 && ptrs.has(e.pointerId) && !moved && start && start.tap && Date.now() - start.t < 600) { start.tap = false; mapTap(); }
     ptrs.delete(e.pointerId); if (ptrs.size < 2) pinch = null;
     if (ptrs.size === 1) { const [p] = [...ptrs.values()]; start = { x: p[0], y: p[1], vb: vb.slice() }; }
     if (!ptrs.size) { svg.classList.remove('dragging'); setTimeout(() => { moved = false; }, 0); }
@@ -556,11 +558,12 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   window.addEventListener('pointercancel', e => { if (ptrs.has(e.pointerId)) endPtr(e); });
   // filet de sécurité iPhone : quand plus aucun doigt ne touche l'écran, plus aucun pointeur actif
   window.addEventListener('touchend', e => { if (!e.touches.length && ptrs.size) { ptrs.clear(); pinch = null; svg.classList.remove('dragging'); setTimeout(() => { moved = false; }, 0); } });
-  // Toucher un endroit vide de la carte désélectionne l'adresse ouverte
-  svg.addEventListener('click', e => {
-    if (moved || e.target.closest('.pin') || view !== 'detail') return;
-    closeDetail(false); if (isPhone()) setSheet('peek');
-  });
+  // Toucher un endroit vide de la carte = revenir en arrière : fiche → liste, puis liste → tiroir replié
+  function mapTap() {
+    if (form) return;
+    if (view === 'detail') { closeDetail(false); if (isPhone() && sheet === 'full') setSheet('half'); }
+    else if (isPhone() && (sheet === 'half' || sheet === 'full')) { if (document.activeElement === $('q')) $('q').blur(); setSheet('peek'); }
+  }
   svg.addEventListener('dblclick', e => { const [mx, my] = toMap(e.clientX, e.clientY); zoomAround(0.5, mx, my, true); });
   const centerMap = () => { const [l, t, r, b] = visRect(); return toMap((l + r) / 2, (t + b) / 2); };
   $('zin').addEventListener('click', () => { const [cx, cy] = centerMap(); zoomAround(0.5, cx, cy, true); });
@@ -571,8 +574,10 @@ textarea.inp { min-height: 84px; resize: vertical; line-height: 1.45; }
   let sheet = 'peek';
   // États du tiroir, du plus ouvert au plus replié : liste plein écran, moitié, menu des filtres, petite barre
   const SHEETS = ['full', 'half', 'peek', 'mini'];
+  const sabEl = el('div', { 'aria-hidden': 'true' }); sabEl.style.cssText = 'position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none'; document.body.appendChild(sabEl);
+  const sab = () => sabEl.offsetHeight || 0;   // hauteur de la barre d'accueil de l'iPhone
   const sheetOff = s => {
-    const h = panel.offsetHeight, peek = $('phead').offsetHeight + 4, c = $('count'), mini = c.offsetTop + c.offsetHeight + 12;
+    const h = panel.offsetHeight, peek = $('phead').offsetHeight + 4 + sab(), c = $('count'), mini = Math.max(c.offsetTop + c.offsetHeight + 12, 58) + sab();
     return s === 'full' ? 0 : s === 'half' ? Math.max(0, h - Hh() * 0.52) : s === 'mini' ? Math.max(0, h - mini) : Math.max(0, h - peek);
   };
   function setSheet(s) {
